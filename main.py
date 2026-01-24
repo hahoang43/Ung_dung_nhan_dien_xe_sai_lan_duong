@@ -1,72 +1,120 @@
 import cv2
 import os
-from src.detector import VehicleDetector
+import torch
 from src.lane_monitor import LaneMonitor
+from src.lane_drawer import LaneDrawer
+from ultralytics import YOLO
 
 # --- CẤU HÌNH ---
-VIDEO_PATH = 'data/xe.mp4' # Đường dẫn video đầu vào (bạn cần thay đổi)
+VIDEO_PATH = 'data/xe.mp4' 
 OUTPUT_PATH = 'output/result.mp4'
 
-# Định nghĩa vùng làn đường (Polygon: danh sách các điểm x, y)
-# LƯU Ý: Bạn cần chạy video một lần, print tọa độ chuột để lấy các điểm chính xác cho video của bạn.
-# Đây là tọa độ giả lập.
-LANES_CONFIG = [
+# Cấu hình tối ưu cho RTX 3050 (Vừa nhanh vừa chính xác)
+MODEL_PATH = 'yolov8m.pt' 
+IMAGE_SIZE = 640 
+
+LANES_TEMPLATE = [
     {
         "name": "Lan Xe May",
-        "polygon": [(100, 400), (300, 400), (400, 700), (0, 700)], # Hình thang bên trái
+        "polygon": [], 
         "allowed_classes": [3], # 3: Motorcycle
-        "color": (0, 255, 0) # Xanh lá
+        "color": (0, 255, 0) 
     },
     {
         "name": "Lan O To",
-        "polygon": [(305, 400), (600, 400), (900, 700), (405, 700)], # Hình thang bên phải
+        "polygon": [],
         "allowed_classes": [2, 5, 7], # 2: Car, 5: Bus, 7: Truck
-        "color": (255, 0, 0) # Xanh dương
+        "color": (255, 0, 0) 
     }
 ]
 
 def main():
-    # 1. Khởi tạo
+    # 1. Kiểm tra phần cứng
+    device = '0' if torch.cuda.is_available() else 'cpu'
+    print(f"--- ĐANG CHẠY TRÊN: {torch.cuda.get_device_name(0) if device == '0' else 'CPU'} ---")
+    
     if not os.path.exists('output'):
         os.makedirs('output')
-        
-    detector = VehicleDetector() # Tự động tải yolov8n.pt
-    monitor = LaneMonitor(LANES_CONFIG)
 
-    # 2. Mở video
     cap = cv2.VideoCapture(VIDEO_PATH)
     if not cap.isOpened():
-        print(f"Không thể mở video: {VIDEO_PATH}")
-        print("Đang sử dụng Webcam (0) để thay thế...")
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("Không thể mở Webcam.")
-            return
+        print("Lỗi: Không thể mở video.")
+        return
 
-    # Lấy thông số video để lưu output
+    # 2. Vẽ làn đường (Chỉ làm 1 lần lúc đầu)
+    ret, first_frame = cap.read()
+    if not ret: return
+    
+    print("\n--- CẤU HÌNH LÀN ĐƯỜNG (CỐ ĐỊNH) ---")
+    drawer = LaneDrawer()
+    final_lanes_config = []
+    
+    for lane_cfg in LANES_TEMPLATE:
+        # Hàm này sẽ mở cửa sổ để bạn click chuột vẽ
+        points = drawer.get_lane_polygon(first_frame, lane_cfg["name"])
+        lane_cfg["polygon"] = points
+        final_lanes_config.append(lane_cfg)
+        
+    drawer.close()
+    
+    # 3. Khởi tạo AI & Monitor
+    print(f"Đang tải model {MODEL_PATH}...")
+    model = YOLO(MODEL_PATH)
+    
+    # Khởi tạo bộ giám sát với tọa độ tĩnh vừa vẽ
+    monitor = LaneMonitor(final_lanes_config)
+
+    # 4. Bắt đầu xử lý video
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0) # Tua về đầu
+    
+    # Cấu hình lưu video
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    
-    # Video Writer
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(OUTPUT_PATH, fourcc, fps, (width, height))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    out = cv2.VideoWriter(OUTPUT_PATH, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
-    print("Bắt đầu xử lý... Nhấn 'q' để thoát.")
+    print("Bắt đầu chạy... (Nhấn 'q' để thoát)")
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        # 3. Phát hiện xe
-        detections = detector.detect(frame)
+        # --- TRACKING (Bám theo xe để lấy ID đếm số lượng) ---
+        # persist=True: Giữ ID xe ổn định qua các khung hình
+        results = model.track(
+            frame, 
+            persist=True, 
+            verbose=False, 
+            imgsz=IMAGE_SIZE, 
+            conf=0.5, 
+            device=device,
+            classes=[2, 3, 5, 7] # Chỉ nhận diện xe, bỏ qua người/vật khác
+        )[0]
 
-        # 4. Kiểm tra làn đường và vẽ kết quả
-        processed_frame, violations = monitor.check_violations(detections, frame)
+        detections = []
+        # Kiểm tra xem có xe nào không
+        if results.boxes is not None and results.boxes.id is not None:
+            # Lấy dữ liệu từ GPU về CPU
+            boxes = results.boxes
+            xyxys = boxes.xyxy.cpu().numpy()
+            ids = boxes.id.cpu().numpy()
+            clss = boxes.cls.cpu().numpy()
+            confs = boxes.conf.cpu().numpy()
 
-        # 5. Hiển thị và lưu
-        cv2.imshow('Wrong Lane Detection', processed_frame)
+            # Đóng gói dữ liệu gửi sang LaneMonitor
+            for xyxy, track_id, cls_id, conf in zip(xyxys, ids, clss, confs):
+                x1, y1, x2, y2 = map(int, xyxy)
+                detections.append((x1, y1, x2, y2, int(track_id), conf, int(cls_id)))
+
+        # --- KIỂM TRA LÀN & ĐẾM XE ---
+        processed_frame, violation_ids = monitor.check_violations(detections, frame)
+
+        # Hiển thị thông tin phần cứng
+        cv2.putText(processed_frame, f"Mode: FIXED | GPU: ON", (10, height - 20), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        cv2.imshow('Phat hien sai lan (Co dinh)', processed_frame)
         out.write(processed_frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -75,7 +123,7 @@ def main():
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-    print(f"Hoàn thành! Video đã lưu tại {OUTPUT_PATH}")
+    print("Hoàn thành!")
 
 if __name__ == "__main__":
     main()

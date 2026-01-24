@@ -1,0 +1,37 @@
+# --- Python & System ---
+# Bỏ qua các file biên dịch của Python (thư mục __pycache__ trong hình)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Bỏ qua môi trường ảo (thư mục .venv trong hình)
+.venv/
+venv/
+env/
+
+# --- IDE Settings ---
+# Bỏ qua cấu hình VS Code (thường không nên share setting cá nhân)
+.vscode/
+
+# --- Project Specific Data ---
+# Bỏ qua thư mục chứa video đầu vào (data/xe.mp4) - File này thường nặng
+data/
+
+# Bỏ qua thư mục kết quả (output/result.mp4) - File này sinh ra khi chạy code
+output/
+
+# Bỏ qua tất cả các file video (để tránh push nhầm file nặng ở chỗ khác)
+*.mp4
+*.avi
+*.mkv
+
+# --- Model Weights ---
+# Bỏ qua các file model YOLO (.pt) vì chúng là file binary và có thể nặng
+# Nếu bạn muốn version control model, hãy cân nhắc dùng Git LFS
+*.pt
+*.pth
+*.onnx
+
+# --- Khác ---
+# Bỏ qua file log nếu có
+*.log

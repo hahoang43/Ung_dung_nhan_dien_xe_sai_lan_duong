@@ -16,31 +16,29 @@ Hệ thống được **tối ưu hóa cho GPU NVIDIA** (RTX 3050 trở lên) đ
 
 ## Tính Năng Nổi Bật
 
-✅ **Vẽ làn đường tương tác**
+**Vẽ làn đường tương tác**
    - Không cần sửa code tọa độ thủ công
    - Click chuột trực tiếp lên video để vẽ vùng làn đường
    - Hỗ trợ Undo (nhấn chuột phải) và Reset (phím 'r')
 
-✅ **Nhận diện đa phương tiện**
+**Nhận diện đa phương tiện**
    - Ô tô, Xe máy, Xe buýt, Xe tải
 
-✅ **Tracking & Đếm chính xác**
+**Tracking & Đếm chính xác**
    - Mỗi xe được gán ID duy nhất qua các khung hình
    - Lưu lũy tích ID xe sai làn (dùng Set → không đếm trùng)
    - Hiển thị thống kê theo từng làn đường
 
-✅ **Tối ưu hóa GPU**
+**Tối ưu hóa GPU**
    - Chạy mượt mà trên card NVIDIA
    - Hỗ trợ CPU nếu không có GPU (chậm hơn)
 
-✅ **Giao diện trực quan**
+**Giao diện trực quan**
    - Khung đỏ cảnh báo cho xe sai làn
    - Text hiển thị ID xe vi phạm
    - Bảng thống kê tổng số vi phạm theo làn
 
-
-** = File quan trọng**
-## 🛠 Cài đặt
+##  Cài đặt
 
 ### Yêu cầu hệ thống
 

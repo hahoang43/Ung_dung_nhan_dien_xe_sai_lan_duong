@@ -4,7 +4,7 @@
 Ứng dụng thông minh phát hiện và đếm số lượng phương tiện giao thông vi phạm luật sử dụng làn đường theo thời gian thực, sử dụng công nghệ nhận diện ảnh AI (YOLOv8) và theo dõi quỹ đạo (Vehicle Tracking).
 
 ## 🎬 Video Demo
-![Nhom9 Demo - Ứng dụng Nhận Diện Xe Sai Làn Đường](Nhom9-DemoUngDungNhanDienXeSaiLanDuong.mp4)
+📽️ **[Xem Video Demo tại đây](https://drive.google.com/file/d/1y6BpkX6QqqB3Nd-eQxkzXYM8mpwRTmlM/view?usp=sharing)** - Nhom9 Ứng dụng Nhận Diện Xe Sai Làn Đường
 
 ### 📌 Mục đích
 - **Giám sát giao thông**: Phát hiện xe vi phạm làn đường (xe máy chạy làn ô tô, ô tô chạy làn xe máy, v.v.)

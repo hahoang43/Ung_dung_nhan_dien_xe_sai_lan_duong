@@ -21,7 +21,6 @@ data/
 output/
 
 # Bỏ qua tất cả các file video (để tránh push nhầm file nặng ở chỗ khác)
-*.mp4
 *.avi
 *.mkv
 
